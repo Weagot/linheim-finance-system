@@ -1,4 +1,4 @@
-import { Download, Calendar, BarChart3, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Download, BarChart3, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 export default function Reports() {
   return (

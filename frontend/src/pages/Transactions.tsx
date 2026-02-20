@@ -1,4 +1,4 @@
-import { Plus, Search, Filter, Download } from 'lucide-react';
+import { Plus, Search, Download } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Transactions() {
