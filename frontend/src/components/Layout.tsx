@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Receipt, FileText, BarChart3, Menu } from 'lucide-react';
+import { Home, Receipt, FileText, BarChart3, Menu, LogOut, User } from 'lucide-react';
 import { useState } from 'react';
+import { useCurrentUser, useLogout } from '../lib/hooks';
 
 const navItems = [
   { path: '/', label: '仪表盘', icon: Home },
@@ -12,6 +13,13 @@ const navItems = [
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { data: user } = useCurrentUser();
+  const logout = useLogout();
+
+  const handleLogout = async () => {
+    await logout.mutateAsync();
+    window.location.href = '/';
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -78,13 +86,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary-700">老板</span>
+                  <User className="w-5 h-5 text-primary-600" />
                 </div>
                 <div className="text-sm">
-                  <p className="font-medium text-gray-900">管理员</p>
-                  <p className="text-xs text-gray-500">Deyou Group</p>
+                  <p className="font-medium text-gray-900">{user?.name || 'User'}</p>
+                  <p className="text-xs text-gray-500">{user?.role || 'Guest'}</p>
                 </div>
               </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600"
+                title="退出登录"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </header>
