@@ -7,9 +7,11 @@ import Transactions from './pages/Transactions';
 import Invoices from './pages/Invoices';
 import Reports from './pages/Reports';
 import Layout from './components/Layout';
-import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
+
+// 开发模式：跳过登录检查
+const DEV_MODE_SKIP_AUTH = true;
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +37,23 @@ function AppRoutes() {
     );
   }
 
+  // 开发模式：跳过登录检查
+  if (DEV_MODE_SKIP_AUTH) {
+    return (
+      <>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/invoices" element={<Invoices />} />
+            <Route path="/reports" element={<Reports />} />
+          </Routes>
+        </Layout>
+        <ToastContainer />
+      </>
+    );
+  }
+
   // If not logged in, show login page
   if (!user) {
     return (
@@ -48,16 +67,14 @@ function AppRoutes() {
   // User is logged in, show protected routes
   return (
     <>
-      <ProtectedRoute>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/reports" element={<Reports />} />
-          </Routes>
-        </Layout>
-      </ProtectedRoute>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/reports" element={<Reports />} />
+        </Routes>
+      </Layout>
       <ToastContainer />
     </>
   );
