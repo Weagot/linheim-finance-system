@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Receipt, FileText, BarChart3, Menu, LogOut, User } from 'lucide-react';
+import { Home, Receipt, FileText, BarChart3, Building2, Menu, LogOut, User } from 'lucide-react';
 import { useState } from 'react';
 import { useCurrentUser, useLogout } from '../lib/hooks';
 
@@ -7,6 +7,7 @@ const navItems = [
   { path: '/', label: '仪表盘', icon: Home },
   { path: '/transactions', label: '财务流水', icon: Receipt },
   { path: '/invoices', label: '开票管理', icon: FileText },
+  { path: '/companies', label: '公司管理', icon: Building2 },
   { path: '/reports', label: '报表中心', icon: BarChart3 },
 ];
 
