@@ -1,0 +1,17 @@
+{
+  "buildCommand": "cd backend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": "vite",
+  "installCommand": "npm install",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    }
+  ]
+}
