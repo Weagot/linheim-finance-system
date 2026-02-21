@@ -41,6 +41,7 @@ const companyData = [
     expenses: 68000,
     profit: 27000,
     percentage: 75.7,
+    initialBalance: 100000,
   },
   {
     id: '2',
@@ -51,6 +52,7 @@ const companyData = [
     expenses: 15210,
     profit: -3210,
     percentage: 9.6,
+    initialBalance: 50000,
   },
   {
     id: '3',
@@ -61,6 +63,7 @@ const companyData = [
     expenses: 4000,
     profit: 14430,
     percentage: 14.7,
+    initialBalance: 200000,
   },
 ];
 
@@ -303,43 +306,58 @@ export default function Reports() {
                 <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">收入</th>
                 <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">支出</th>
                 <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">净利润</th>
+                <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">初始余额</th>
+                <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">当前余额</th>
                 <th className="text-right px-6 py-3 text-sm font-semibold text-gray-700">占比</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {companyData.map((company) => (
-                <tr key={company.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                        {company.code}
+              {companyData.map((company) => {
+                const currentBalance = company.initialBalance + company.profit;
+                return (
+                  <tr key={company.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                          {company.code}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{company.name}</p>
+                          <p className="text-xs text-gray-500">{company.currency}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{company.name}</p>
-                        <p className="text-xs text-gray-500">{company.currency}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right font-semibold text-green-600">
-                    {company.currency === 'CNY' ? '¥' : '€'}
-                    {company.income.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-right font-semibold text-red-600">
-                    -{company.currency === 'CNY' ? '¥' : '€'}
-                    {company.expenses.toLocaleString()}
-                  </td>
-                  <td className={`px-6 py-4 text-right font-semibold ${
-                    company.profit >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {company.currency === 'CNY' ? '¥' : '€'}
-                    {Math.abs(company.profit).toLocaleString()}
-                    {company.profit < 0 ? ' (亏损)' : ''}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm text-gray-600">
-                    {company.percentage}%
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-green-600">
+                      {company.currency === 'CNY' ? '¥' : '€'}
+                      {company.income.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right font-semibold text-red-600">
+                      -{company.currency === 'CNY' ? '¥' : '€'}
+                      {company.expenses.toLocaleString()}
+                    </td>
+                    <td className={`px-6 py-4 text-right font-semibold ${
+                      company.profit >= 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {company.currency === 'CNY' ? '¥' : '€'}
+                      {Math.abs(company.profit).toLocaleString()}
+                      {company.profit < 0 ? ' (亏损)' : ''}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-600">
+                      {company.currency === 'CNY' ? '¥' : '€'}
+                      {company.initialBalance.toLocaleString()}
+                    </td>
+                    <td className={`px-6 py-4 text-right font-bold ${
+                      currentBalance >= 0 ? 'text-blue-600' : 'text-red-600'
+                    }`}>
+                      {company.currency === 'CNY' ? '¥' : '€'}
+                      {currentBalance.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm text-gray-600">
+                      {company.percentage}%
+                    </td>
+                  </tr>
+                );
+              })}
               <tr className="bg-gray-50 font-semibold">
                 <td className="px-6 py-4 text-gray-900">合计</td>
                 <td className="px-6 py-4 text-right text-green-600">
@@ -350,6 +368,16 @@ export default function Reports() {
                 </td>
                 <td className="px-6 py-4 text-right text-green-600">
                   €{profitLossData.profit.toLocaleString()}
+                </td>
+                <td className="px-6 py-4 text-right text-gray-600">
+                  €{companyData.reduce((sum, c) => sum + c.initialBalance, 0).toLocaleString()}
+                </td>
+                <td className={`px-6 py-4 text-right ${
+                  companyData.reduce((sum, c) => sum + c.initialBalance + c.profit, 0) >= 0
+                    ? 'text-blue-600'
+                    : 'text-red-600'
+                }`}>
+                  €{companyData.reduce((sum, c) => sum + c.initialBalance + c.profit, 0).toLocaleString()}
                 </td>
                 <td className="px-6 py-4 text-right text-gray-600">100%</td>
               </tr>

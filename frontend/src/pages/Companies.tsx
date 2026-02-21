@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Plus, Search, Edit, Trash2, MapPin, DollarSign, Globe } from 'lucide-react';
+import { Building2, Plus, Search, Edit, Trash2, MapPin, DollarSign, Globe, Wallet } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 interface Company {
@@ -9,6 +9,7 @@ interface Company {
   currency: string;
   country: string;
   type: string;
+  initialBalance: number;
 }
 
 const mockCompanies: Company[] = [
@@ -19,6 +20,7 @@ const mockCompanies: Company[] = [
     currency: 'EUR',
     country: 'Germany',
     type: 'warehouse',
+    initialBalance: 100000,
   },
   {
     id: '2',
@@ -27,6 +29,7 @@ const mockCompanies: Company[] = [
     currency: 'EUR',
     country: 'Germany',
     type: 'hr',
+    initialBalance: 50000,
   },
   {
     id: '3',
@@ -35,6 +38,7 @@ const mockCompanies: Company[] = [
     currency: 'CNY',
     country: 'China',
     type: 'billing',
+    initialBalance: 200000,
   },
 ];
 
@@ -49,6 +53,7 @@ export default function Companies() {
     currency: 'EUR',
     country: '',
     type: 'warehouse',
+    initialBalance: 0,
   });
 
   const toast = useToast();
@@ -68,6 +73,7 @@ export default function Companies() {
         currency: company.currency,
         country: company.country,
         type: company.type,
+        initialBalance: company.initialBalance,
       });
     } else {
       setEditingCompany(null);
@@ -77,6 +83,7 @@ export default function Companies() {
         currency: 'EUR',
         country: '',
         type: 'warehouse',
+        initialBalance: 0,
       });
     }
     setShowModal(true);
@@ -100,7 +107,7 @@ export default function Companies() {
       setCompanies(
         companies.map((c) =>
           c.id === editingCompany.id
-            ? { ...c, ...formData }
+            ? { ...c, ...formData, initialBalance: parseFloat(formData.initialBalance.toString()) }
             : c
         )
       );
@@ -110,6 +117,7 @@ export default function Companies() {
       const newCompany: Company = {
         id: Date.now().toString(),
         ...formData,
+        initialBalance: parseFloat(formData.initialBalance.toString()),
       };
       setCompanies([...companies, newCompany]);
       toast.show('新公司已创建', 'success');
@@ -212,13 +220,15 @@ export default function Companies() {
         <div className="card p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">币种数量</p>
+              <p className="text-sm font-medium text-gray-500">初始总余额</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {new Set(companies.map((c) => c.currency)).size}
+                {companies
+                  .reduce((sum, c) => sum + c.initialBalance, 0)
+                  .toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-yellow-600" />
+              <Wallet className="w-6 h-6 text-yellow-600" />
             </div>
           </div>
         </div>
@@ -235,13 +245,14 @@ export default function Companies() {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">国家</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">币种</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">类型</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-700">初始余额</th>
                 <th className="text-right px-6 py-4 text-sm font-semibold text-gray-700">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredCompanies.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     {searchQuery ? '未找到匹配的公司' : '暂无公司，点击"新增公司"添加'}
                   </td>
                 </tr>
@@ -267,6 +278,9 @@ export default function Companies() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
                         {companyTypeLabels[company.type] || company.type}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {company.initialBalance.toLocaleString()} {company.currency}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -385,6 +399,27 @@ export default function Companies() {
                     <option value="billing">开票公司</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  初始余额
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.initialBalance}
+                    onChange={(e) => setFormData({ ...formData, initialBalance: parseFloat(e.target.value) || 0 })}
+                    className="input-field pl-10"
+                    placeholder="0.00"
+                    required
+                  />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  设置公司的初始账户余额
+                </p>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
