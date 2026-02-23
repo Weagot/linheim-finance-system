@@ -1,0 +1,124 @@
+// Prisma Schema for Linheim Group Finance System
+// PostgreSQL for Vercel Postgres
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Vercel Postgres 环境变量
+  url      = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ==================== 用户管理 ====================
+
+model User {
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  password       String
+  role           String   @default("VIEWER") // ADMIN, FINANCE, COMPANY_ADMIN, VIEWER
+  companyAccess  String   // JSON array of company IDs
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ==================== 公司管理 ====================
+
+model Company {
+  id        String     @id @default(uuid())
+  name      String     // 公司名称
+  code      String     @unique // 公司代码：DEYOU, WANLING, JSCH
+  currency  String     @default("EUR") // EUR, CNY, USD, GBP, HKD
+  country   String     // 所在国家
+  type      String     // 公司类型
+  initialBalance Float  @default(0) // 初始余额
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  transactions     Transaction[]
+  issuedInvoices   Invoice[] @relation("IssuedInvoices")
+  receivedInvoices Invoice[] @relation("ReceivedInvoices")
+  @@map("companies")
+}
+
+// ==================== 财务流水 ====================
+
+model Transaction {
+  id                   String  @id @default(uuid())
+  companyId            String
+  type                 String  @default("INCOME") // INCOME, EXPENSE, TRANSFER
+  amount               Float
+  currency             String  @default("EUR") // EUR, CNY, USD, GBP, HKD
+  category             String
+  description          String?
+  date                 DateTime
+  relatedCompanyId     String? // 转账时关联的公司
+  relatedTransactionId String? // 转账时配对的流水ID
+  invoiceId            String? // 关联的发票ID
+  projectId            String? // 关联的项目ID（后期）
+  createdBy            String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company              Company   @relation(fields: [companyId], references: [id])
+  @@map("transactions")
+}
+
+// ==================== 发票管理 ====================
+
+model Invoice {
+  id                    String   @id @default(uuid())
+  invoiceNumber         String   @unique
+  invoiceDate           DateTime
+  dueDate               DateTime?
+  amount                Float
+  currency              String   @default("EUR") // EUR, CNY, USD, GBP, HKD
+  issuerCompanyId       String
+  receiverCompanyId     String?
+  receiverName          String?  // 收票客户名（非内部公司时）
+  status                String   @default("DRAFT") // DRAFT, ISSUED, PAID, OVERDUE
+  fileUrl               String?   // 发票文件路径
+  relatedTransactionId  String?   // 关联的财务流水ID
+  createdBy             String
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  issuerCompany         Company   @relation("IssuedInvoices", fields: [issuerCompanyId], references: [id])
+  receiverCompany       Company?  @relation("ReceivedInvoices", fields: [receiverCompanyId], references: [id])
+  @@map("invoices")
+}
+
+// ==================== 项目管理（后期）====================
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String   // 项目名称
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("projects")
+}
+
+// ==================== 汇率记录 ====================
+
+model ExchangeRate {
+  id            String   @id @default(uuid())
+  date          DateTime
+  fromCurrency  String   // EUR, CNY, USD, GBP, HKD
+  toCurrency    String   // EUR, CNY, USD, GBP, HKD
+  rate          Float
+  source        String   // 来源：中国银行
+  createdAt     DateTime @default(now())
+
+  @@unique([date, fromCurrency, toCurrency])
+  @@map("exchange_rates")
+}
