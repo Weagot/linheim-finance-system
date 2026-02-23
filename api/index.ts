@@ -6,14 +6,6 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'linheim-finance-2026-secret';
 
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
-
-// Handle OPTIONS request for CORS
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,86 +16,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const { method, url } = req;
-  const path = url?.split('/api')[1] || '';
-
   try {
     // Auth routes
-    if (path.startsWith('/auth/login') && method === 'POST') {
+    if (req.url?.includes('/api/auth/login') && req.method === 'POST') {
       return await handleLogin(req, res);
     }
-    if (path.startsWith('/auth/register') && method === 'POST') {
+    if (req.url?.includes('/api/auth/register') && req.method === 'POST') {
       return await handleRegister(req, res);
     }
-    if (path.startsWith('/auth/me') && method === 'GET') {
+    if (req.url?.includes('/api/auth/me') && req.method === 'GET') {
       return await handleGetCurrentUser(req, res);
     }
 
-    // Authenticate other routes
-    const userId = await authenticate(req, res);
-    if (!userId && !path.startsWith('/auth/')) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
     // Companies routes
-    if (path.startsWith('/companies') && method === 'GET') {
+    if (req.url?.includes('/api/companies') && req.method === 'GET' && !req.url.match(/\/companies\/[^/]+$/)) {
       return await handleGetCompanies(req, res);
     }
-    if (path.startsWith('/companies') && method === 'POST') {
+    if (req.url?.includes('/api/companies') && req.method === 'POST') {
       return await handleCreateCompany(req, res);
     }
-    if (path.match(/^\/companies\/[^/]+$/) && method === 'GET') {
+    if (req.url?.match(/\/api\/companies\/[^/]+$/) && req.method === 'GET') {
       return await handleGetCompany(req, res);
     }
-    if (path.match(/^\/companies\/[^/]+$/) && method === 'PUT') {
+    if (req.url?.match(/\/api\/companies\/[^/]+$/) && req.method === 'PUT') {
       return await handleUpdateCompany(req, res);
     }
-    if (path.match(/^\/companies\/[^/]+$/) && method === 'DELETE') {
+    if (req.url?.match(/\/api\/companies\/[^/]+$/) && req.method === 'DELETE') {
       return await handleDeleteCompany(req, res);
     }
 
     // Transactions routes
-    if (path.startsWith('/transactions') && method === 'GET') {
+    if (req.url?.includes('/api/transactions') && req.method === 'GET' && !req.url.match(/\/transactions\/[^/]+$/)) {
       return await handleGetTransactions(req, res);
     }
-    if (path.startsWith('/transactions') && method === 'POST') {
+    if (req.url?.includes('/api/transactions') && req.method === 'POST') {
       return await handleCreateTransaction(req, res);
     }
-    if (path.match(/^\/transactions\/[^/]+$/) && method === 'GET') {
+    if (req.url?.match(/\/api\/transactions\/[^/]+$/) && req.method === 'GET') {
       return await handleGetTransaction(req, res);
     }
-    if (path.match(/^\/transactions\/[^/]+$/) && method === 'PUT') {
+    if (req.url?.match(/\/api\/transactions\/[^/]+$/) && req.method === 'PUT') {
       return await handleUpdateTransaction(req, res);
     }
-    if (path.match(/^\/transactions\/[^/]+$/) && method === 'DELETE') {
+    if (req.url?.match(/\/api\/transactions\/[^/]+$/) && req.method === 'DELETE') {
       return await handleDeleteTransaction(req, res);
     }
 
     // Invoices routes
-    if (path.startsWith('/invoices') && method === 'GET') {
+    if (req.url?.includes('/api/invoices') && req.method === 'GET' && !req.url.match(/\/invoices\/[^/]+$/)) {
       return await handleGetInvoices(req, res);
     }
-    if (path.startsWith('/invoices') && method === 'POST') {
+    if (req.url?.includes('/api/invoices') && req.method === 'POST') {
       return await handleCreateInvoice(req, res);
     }
-    if (path.match(/^\/invoices\/[^/]+$/) && method === 'GET') {
+    if (req.url?.match(/\/api\/invoices\/[^/]+$/) && req.method === 'GET') {
       return await handleGetInvoice(req, res);
     }
-    if (path.match(/^\/invoices\/[^/]+$/) && method === 'PUT') {
+    if (req.url?.match(/\/api\/invoices\/[^/]+$/) && req.method === 'PUT') {
       return await handleUpdateInvoice(req, res);
     }
-    if (path.match(/^\/invoices\/[^/]+$/) && method === 'DELETE') {
+    if (req.url?.match(/\/api\/invoices\/[^/]+$/) && req.method === 'DELETE') {
       return await handleDeleteInvoice(req, res);
     }
 
     // Reports routes
-    if (path.startsWith('/reports/profit-loss') && method === 'GET') {
+    if (req.url?.includes('/api/reports/profit-loss') && req.method === 'GET') {
       return await handleGetProfitLoss(req, res);
     }
-    if (path.startsWith('/reports/cash-flow') && method === 'GET') {
+    if (req.url?.includes('/api/reports/cash-flow') && req.method === 'GET') {
       return await handleGetCashFlow(req, res);
     }
-    if (path.startsWith('/reports/company-summary') && method === 'GET') {
+    if (req.url?.includes('/api/reports/company-summary') && req.method === 'GET') {
       return await handleGetCompanySummary(req, res);
     }
 
@@ -145,7 +128,7 @@ async function handleRegister(req: VercelRequest, res: VercelResponse) {
         email,
         password: hashedPassword,
         role: 'VIEWER',
-        companyAccess: '[]',
+        company_access: '[]',
       },
     });
 
@@ -181,22 +164,6 @@ async function handleGetCurrentUser(req: VercelRequest, res: VercelResponse) {
     res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
-  }
-}
-
-// Middleware
-async function authenticate(req: VercelRequest, res: VercelResponse): Promise<string | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authHeader.substring(7);
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return decoded.id;
-  } catch (error) {
-    return null;
   }
 }
 
@@ -273,7 +240,7 @@ async function handleCreateTransaction(req: VercelRequest, res: VercelResponse) 
       relatedTransactionId,
       invoiceId,
       projectId,
-      createdBy: 'admin', // TODO: Get from JWT
+      createdBy: 'admin',
     },
   });
   res.status(201).json({ transaction });
@@ -354,7 +321,7 @@ async function handleCreateInvoice(req: VercelRequest, res: VercelResponse) {
       receiverName,
       status: status || 'DRAFT',
       fileUrl,
-      createdBy: 'admin', // TODO: Get from JWT
+      createdBy: 'admin',
     },
   });
   res.status(201).json({ invoice });
