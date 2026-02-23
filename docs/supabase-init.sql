@@ -126,13 +126,12 @@ CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
 -- 初始化数据
 -- ============================================
 
--- 创建初始管理员用户（密码: admin123，已经过 bcrypt 哈希）
-INSERT INTO users (id, name, email, password, role, company_access, created_at, updated_at)
+-- 创建初始管理员用户（密码: admin123）
+INSERT INTO users (name, email, password, role, company_access, created_at, updated_at)
 VALUES (
-  'admin-0000-0000-0000-000000000001',
   'Admin',
   'admin@linheim.de',
-  '$2a$10$8K1p/a0d3l3Y1xG1nQ1T8.V1xG1nQ1T8.V1xG1nQ1T8.V1xG1nQ1T8',
+  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
   'ADMIN',
   '[]',
   NOW(),
