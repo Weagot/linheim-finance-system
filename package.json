@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "NODE_ENV=development vite --host",
     "build": "vite build",
     "vercel-build": "vite build"
   },
