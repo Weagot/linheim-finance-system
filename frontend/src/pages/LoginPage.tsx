@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
-import { useLogin } from '../lib/hooks';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowRight, Play } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
 interface LoginFormData {
@@ -20,9 +21,11 @@ export default function LoginPage() {
     password: '',
     rememberMe: false,
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const loginMutation = useLogin();
+  const { login, demoLogin } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
 
   const errors = {
     email: touched.email && !formData.email ? '请输入邮箱地址' : '',
@@ -48,19 +51,23 @@ export default function LoginPage() {
       return;
     }
 
+    setIsLoading(true);
     try {
-      await loginMutation.mutateAsync({
-        email: formData.email,
-        password: formData.password,
-      });
-      toast.show('登录成功！正在跳转...', 'success');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 1000);
+      await login(formData.email, formData.password);
+      toast.show('登录成功！', 'success');
+      navigate('/');
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || '登录失败，请检查邮箱和密码';
       toast.show(errorMessage, 'error', 5000);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    demoLogin();
+    toast.show('已进入演示模式', 'success');
+    navigate('/');
   };
 
   return (
@@ -185,6 +192,7 @@ export default function LoginPage() {
                       } focus:ring-2 focus:ring-opacity-20 transition-all outline-none`}
                       placeholder="name@company.com"
                       autoComplete="email"
+                      disabled={isLoading}
                     />
                   </div>
                   {(errors.email || errors.emailInvalid) && (
@@ -201,10 +209,7 @@ export default function LoginPage() {
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                       密码
                     </label>
-                    <a
-                      href="#"
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
+                    <a href="#" className="text-sm text-blue-600 hover:text-blue-700 transition-colors">
                       忘记密码？
                     </a>
                   </div>
@@ -225,6 +230,7 @@ export default function LoginPage() {
                       } focus:ring-2 focus:ring-opacity-20 transition-all outline-none`}
                       placeholder="••••••••"
                       autoComplete="current-password"
+                      disabled={isLoading}
                     />
                     <button
                       type="button"
@@ -249,7 +255,8 @@ export default function LoginPage() {
                     type="checkbox"
                     checked={formData.rememberMe}
                     onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 focus:ring-opacity-20"
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    disabled={isLoading}
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                     记住我
@@ -259,17 +266,17 @@ export default function LoginPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={loginMutation.isPending}
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 focus:ring-4 focus:ring-blue-500 focus:ring-opacity-20 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                  disabled={isLoading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {loginMutation.isPending ? (
+                  {isLoading ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>登录中...</span>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      登录中...
                     </>
                   ) : (
                     <>
-                      <span>登录</span>
+                      登录
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}
@@ -277,57 +284,31 @@ export default function LoginPage() {
               </form>
 
               {/* Divider */}
-              <div className="relative my-8">
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">测试账号</span>
+                  <span className="px-4 bg-white text-gray-500">或者</span>
                 </div>
               </div>
 
-              {/* Demo Account */}
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">邮箱</span>
-                  <span className="font-mono text-gray-900 bg-gray-200 px-2 py-1 rounded">
-                    admin@linheim.com
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">密码</span>
-                  <span className="font-mono text-gray-900 bg-gray-200 px-2 py-1 rounded">
-                    admin123
-                  </span>
-                </div>
-              </div>
+              {/* Demo Mode Button */}
+              <button
+                onClick={handleDemoLogin}
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all flex items-center justify-center gap-2"
+              >
+                <Play className="w-5 h-5" />
+                演示模式（无需登录）
+              </button>
 
-              {/* Footer */}
-              <p className="text-center text-sm text-gray-600 mt-6">
-                还没有账户？
-                <a
-                  href="#register"
-                  className="text-blue-600 hover:text-blue-700 font-medium ml-1"
-                >
-                  联系管理员开通
-                </a>
+              <p className="mt-4 text-center text-sm text-gray-500">
+                演示模式下可浏览界面，数据为模拟数据
               </p>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="absolute bottom-0 left-0 right-0 p-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-sm text-gray-600">
-          <p>© 2026 Linheim Group. All rights reserved.</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-gray-900 transition-colors">隐私政策</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">服务条款</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">联系我们</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

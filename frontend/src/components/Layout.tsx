@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   Receipt, 
@@ -15,7 +15,7 @@ import {
   Bell
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useCurrentUser, useLogout } from '../lib/hooks';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { path: '/', label: '仪表盘', icon: Home, gradient: 'from-violet-500 to-purple-500' },
@@ -28,11 +28,11 @@ const navItems = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { data: user } = useCurrentUser();
-  const logout = useLogout();
+  const { user, logout, isDemo } = useAuth();
 
   // Detect mobile screen
   useEffect(() => {
@@ -54,9 +54,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const handleLogout = async () => {
-    await logout.mutateAsync();
-    window.location.href = '/';
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const toggleSidebar = () => {

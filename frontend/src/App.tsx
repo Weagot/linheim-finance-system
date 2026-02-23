@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
@@ -21,38 +23,39 @@ const queryClient = new QueryClient({
   },
 });
 
-// 开发模式：直接跳过登录
-const DEV_MODE_SKIP_LOGIN = true;
-
 function App() {
   return (
     <ToastProvider>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          {DEV_MODE_SKIP_LOGIN ? (
-            // 开发模式：直接显示主界面
-            <>
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/transactions" element={<Transactions />} />
-                  <Route path="/invoices" element={<Invoices />} />
-                  <Route path="/companies" element={<Companies />} />
-                  <Route path="/exchange-rates" element={<ExchangeRates />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Layout>
-              <ToastContainer />
-            </>
-          ) : (
-            // 生产模式：需要登录
-            <>
-              <LoginPage />
-              <ToastContainer />
-            </>
-          )}
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* 登录页面 */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* 受保护的路由 */}
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/transactions" element={<Transactions />} />
+                        <Route path="/invoices" element={<Invoices />} />
+                        <Route path="/companies" element={<Companies />} />
+                        <Route path="/exchange-rates" element={<ExchangeRates />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                      </Routes>
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+            <ToastContainer />
+          </BrowserRouter>
+        </AuthProvider>
       </QueryClientProvider>
     </ToastProvider>
   );
