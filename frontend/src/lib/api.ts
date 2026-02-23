@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api';
+// 使用相对路径，让 Vite 代理转发到后端
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '/api';
 
 export interface User {
   id: string;
@@ -113,6 +114,36 @@ export const transactionsApi = {
   async delete(id: string) {
     const { data } = await api.delete(`/transactions/${id}`);
     return data;
+  },
+};
+
+// Exchange Rates API
+export const exchangeRatesApi = {
+  async getAll(params?: { from_currency?: string; to_currency?: string; date?: string }) {
+    const { data } = await api.get('/exchange-rates', { params });
+    return data.rates;
+  },
+
+  async getLatest(from: string, to: string, date?: string) {
+    const { data } = await api.get('/exchange-rates/latest', {
+      params: { from, to, date },
+    });
+    return data;
+  },
+
+  async sync() {
+    const { data } = await api.post('/exchange-rates/sync');
+    return data;
+  },
+
+  async preview() {
+    const { data } = await api.get('/exchange-rates/preview');
+    return data;
+  },
+
+  async create(rate: any) {
+    const { data } = await api.post('/exchange-rates', rate);
+    return data.rate;
   },
 };
 

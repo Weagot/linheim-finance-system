@@ -3,18 +3,24 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "build": "npx prisma generate && cd frontend && npm install && npm run build",
-    "build:backend": "cd backend && npx prisma generate && npm install && npx tsc",
-    "build:frontend": "cd frontend && npm install && npm run build",
-    "vercel-build": "npx prisma generate && cd frontend && npm install && npm run build"
+    "dev": "concurrently \"pnpm run dev:server\" \"pnpm run dev:frontend\"",
+    "dev:server": "cd server && ts-node-dev --respawn --transpile-only index.ts",
+    "dev:frontend": "cd frontend && pnpm run dev --port 5000 --host",
+    "build": "pnpm install && cd server && npx tsc --project tsconfig.json && cd ../frontend && pnpm install && pnpm run build",
+    "start": "concurrently \"node server/dist/index.js\" \"cd frontend && pnpm run preview --port 5000 --host\"",
+    "start:frontend": "cd frontend && pnpm run start",
+    "clean": "pkill -f 'ts-node-dev' 2>/dev/null; pkill -f 'vite' 2>/dev/null; pkill -f 'concurrently' 2>/dev/null; true"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
+    "@supabase/supabase-js": "^2.97.0",
     "@vercel/node": "^3.0.0",
     "bcryptjs": "^3.0.3",
-    "cors": "^2.8.5",
+    "cheerio": "^1.2.0",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.6",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
+    "express": "^4.22.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0"

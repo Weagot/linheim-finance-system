@@ -1,6 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useCurrentUser } from './lib/hooks';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
@@ -12,84 +11,47 @@ import Layout from './components/Layout';
 import { ToastProvider } from './contexts/ToastContext';
 import ToastContainer from './components/ToastContainer';
 
-// 开发模式：跳过登录检查
-const DEV_MODE_SKIP_AUTH = true;
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
+      retry: false,
     },
   },
 });
 
-function AppRoutes() {
-  const { data: user, isLoading } = useCurrentUser();
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">正在加载...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // 开发模式：跳过登录检查
-  if (DEV_MODE_SKIP_AUTH) {
-    return (
-      <>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/invoices" element={<Invoices />} />
-            <Route path="/companies" element={<Companies />} />
-            <Route path="/exchange-rates" element={<ExchangeRates />} />
-            <Route path="/reports" element={<Reports />} />
-          </Routes>
-        </Layout>
-        <ToastContainer />
-      </>
-    );
-  }
-
-  // If not logged in, show login page
-  if (!user) {
-    return (
-      <>
-        <LoginPage />
-        <ToastContainer />
-      </>
-    );
-  }
-
-  // User is logged in, show protected routes
-  return (
-    <>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/transactions" element={<Transactions />} />
-          <Route path="/invoices" element={<Invoices />} />
-          <Route path="/reports" element={<Reports />} />
-        </Routes>
-      </Layout>
-      <ToastContainer />
-    </>
-  );
-}
+// 开发模式：直接跳过登录
+const DEV_MODE_SKIP_LOGIN = true;
 
 function App() {
   return (
     <ToastProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <AppRoutes />
+          {DEV_MODE_SKIP_LOGIN ? (
+            // 开发模式：直接显示主界面
+            <>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/transactions" element={<Transactions />} />
+                  <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/companies" element={<Companies />} />
+                  <Route path="/exchange-rates" element={<ExchangeRates />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Layout>
+              <ToastContainer />
+            </>
+          ) : (
+            // 生产模式：需要登录
+            <>
+              <LoginPage />
+              <ToastContainer />
+            </>
+          )}
         </BrowserRouter>
       </QueryClientProvider>
     </ToastProvider>

@@ -1,4 +1,12 @@
 {
-  "buildCommand": "npx prisma generate && cd frontend && npx vite build",
-  "outputDirectory": "frontend/dist"
+  "buildCommand": "cd frontend && pnpm install && pnpm run build",
+  "outputDirectory": "frontend/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.ts" }
+  ],
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  }
 }
