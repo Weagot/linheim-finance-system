@@ -1,91 +1,93 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from '../../lib/supabase';
+import { verifyToken, corsHeaders } from '../../lib/auth';
 
-import prisma from '../../lib/prisma';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  Object.entries(corsHeaders()).forEach(([key, value]) => res.setHeader(key, value));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-export const config = {
-  runtime: 'nodejs',
-};
-
-// Middleware to verify JWT
-async function verifyToken(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  const decoded = verifyToken(req);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const token = authHeader.substring(7);
-  try {
-    return jwt.verify(token, JWT_SECRET) as any;
-  } catch {
-    return null;
-  }
-}
+  // GET /api/invoices
+  if (req.method === 'GET') {
+    try {
+      const { data: invoices, error } = await supabaseAdmin
+        .from('invoices')
+        .select(`
+          *,
+          issuerCompany:companies!invoices_issuer_company_id_fkey(*),
+          receiverCompany:companies!invoices_receiver_company_id_fkey(*)
+        `)
+        .order('invoice_date', { ascending: false });
 
-// GET /api/invoices
-export async function GET(req: NextRequest) {
-  try {
-    const decoded = await verifyToken(req);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (error) throw error;
+
+      return res.status(200).json({ invoices });
+    } catch (error) {
+      console.error('Get invoices error:', error);
+      return res.status(500).json({ error: 'Failed to fetch invoices' });
     }
-
-    const invoices = await prisma.invoice.findMany({
-      include: {
-        issuerCompany: true,
-        receiverCompany: true,
-      },
-      orderBy: { invoiceDate: 'desc' },
-    });
-
-    return NextResponse.json({ invoices });
-  } catch (error) {
-    console.error('Get invoices error:', error);
-    return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 });
   }
-}
 
-// POST /api/invoices
-export async function POST(req: NextRequest) {
-  try {
-    const decoded = await verifyToken(req);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const {
-      invoiceNumber,
-      invoiceDate,
-      dueDate,
-      amount,
-      currency,
-      issuerCompanyId,
-      receiverCompanyId,
-      receiverName,
-      status,
-    } = await req.json();
-
-    const invoice = await prisma.invoice.create({
-      data: {
+  // POST /api/invoices
+  if (req.method === 'POST') {
+    try {
+      const {
         invoiceNumber,
-        invoiceDate: new Date(invoiceDate),
-        dueDate: dueDate ? new Date(dueDate) : null,
-        amount: parseFloat(amount),
+        invoice_number,
+        invoiceDate,
+        invoice_date,
+        dueDate,
+        due_date,
+        amount,
         currency,
         issuerCompanyId,
+        issuer_company_id,
         receiverCompanyId,
+        receiver_company_id,
         receiverName,
+        receiver_name,
         status,
-        createdBy: decoded.id,
-      },
-    });
+      } = req.body;
 
-    return NextResponse.json({ invoice }, { status: 201 });
-  } catch (error) {
-    console.error('Create invoice error:', error);
-    return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 });
+      const finalInvoiceNumber = invoiceNumber || invoice_number;
+      const finalInvoiceDate = invoiceDate || invoice_date;
+      const finalIssuerCompanyId = issuerCompanyId || issuer_company_id;
+
+      if (!finalInvoiceNumber || !finalInvoiceDate || !amount || !finalIssuerCompanyId) {
+        return res.status(400).json({ error: 'invoiceNumber, invoiceDate, amount, and issuerCompanyId are required' });
+      }
+
+      const finalDueDate = dueDate || due_date;
+      const { data: invoice, error } = await supabaseAdmin
+        .from('invoices')
+        .insert({
+          invoice_number: finalInvoiceNumber,
+          invoice_date: new Date(finalInvoiceDate).toISOString(),
+          due_date: finalDueDate ? new Date(finalDueDate).toISOString() : null,
+          amount: parseFloat(amount),
+          currency: currency || 'EUR',
+          issuer_company_id: finalIssuerCompanyId,
+          receiver_company_id: receiverCompanyId || receiver_company_id || null,
+          receiver_name: receiverName || receiver_name || null,
+          status: status || 'DRAFT',
+          created_by: decoded.id,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(201).json({ invoice });
+    } catch (error) {
+      console.error('Create invoice error:', error);
+      return res.status(500).json({ error: 'Failed to create invoice' });
+    }
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

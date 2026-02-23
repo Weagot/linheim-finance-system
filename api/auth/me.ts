@@ -1,48 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from '../../lib/supabase';
+import { verifyToken, corsHeaders } from '../../lib/auth';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  Object.entries(corsHeaders()).forEach(([key, value]) => res.setHeader(key, value));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-export const config = {
-  runtime: 'nodejs',
-};
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-// GET /api/auth/me
-export async function GET(req: NextRequest) {
   try {
-    // Get token from header
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    const decoded = verifyToken(req);
+    if (!decoded) {
+      return res.status(401).json({ error: 'No token provided' });
     }
 
-    const token = authHeader.substring(7);
+    // Get user from database
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, role, company_access, created_at')
+      .eq('id', decoded.id)
+      .single();
 
-    // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (error || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-    // Get user
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        companyAccess: true,
-        createdAt: true,
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        companyAccess: user.company_access,
+        createdAt: user.created_at,
       },
     });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ user });
   } catch (error) {
     console.error('Get user error:', error);
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }

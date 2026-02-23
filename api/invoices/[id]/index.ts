@@ -1,113 +1,105 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from '../../../lib/supabase';
+import { verifyToken, corsHeaders } from '../../../lib/auth';
 
-import prisma from '../../../lib/prisma';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  Object.entries(corsHeaders()).forEach(([key, value]) => res.setHeader(key, value));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-export const config = {
-  runtime: 'nodejs',
-};
-
-// GET /api/invoices/[id]
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
-      include: {
-        issuerCompany: true,
-        receiverCompany: true,
-      },
-    });
-
-    if (!invoice) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ invoice });
-  } catch (error) {
-    console.error('Get invoice error:', error);
-    return NextResponse.json({ error: 'Failed to fetch invoice' }, { status: 500 });
+  const decoded = verifyToken(req);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-}
 
-// PUT /api/invoices/[id]
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { id } = req.query;
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'Invalid invoice ID' });
+  }
+
+  // GET /api/invoices/[id]
+  if (req.method === 'GET') {
+    try {
+      const { data: invoice, error } = await supabaseAdmin
+        .from('invoices')
+        .select(`
+          *,
+          issuerCompany:companies!invoices_issuer_company_id_fkey(*),
+          receiverCompany:companies!invoices_receiver_company_id_fkey(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error || !invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      return res.status(200).json({ invoice });
+    } catch (error) {
+      console.error('Get invoice error:', error);
+      return res.status(500).json({ error: 'Failed to fetch invoice' });
     }
+  }
 
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    const {
-      invoiceDate,
-      dueDate,
-      amount,
-      currency,
-      receiverCompanyId,
-      receiverName,
-      status,
-    } = await req.json();
-
-    const invoice = await prisma.invoice.update({
-      where: { id: params.id },
-      data: {
-        invoiceDate: new Date(invoiceDate),
-        dueDate: dueDate ? new Date(dueDate) : null,
-        amount: parseFloat(amount),
+  // PUT /api/invoices/[id]
+  if (req.method === 'PUT') {
+    try {
+      const {
+        invoiceDate, invoice_date,
+        dueDate, due_date,
+        amount,
         currency,
-        receiverCompanyId,
-        receiverName,
+        receiverCompanyId, receiver_company_id,
+        receiverName, receiver_name,
         status,
-      },
-    });
+      } = req.body;
 
-    return NextResponse.json({ invoice });
-  } catch (error) {
-    console.error('Update invoice error:', error);
-    return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 });
-  }
-}
+      const updateData: Record<string, unknown> = {};
+      const finalInvoiceDate = invoiceDate || invoice_date;
+      const finalDueDate = dueDate || due_date;
+      const finalReceiverCompanyId = receiverCompanyId || receiver_company_id;
+      const finalReceiverName = receiverName || receiver_name;
 
-// DELETE /api/invoices/[id]
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (finalInvoiceDate !== undefined) updateData.invoice_date = new Date(finalInvoiceDate).toISOString();
+      if (finalDueDate !== undefined) updateData.due_date = finalDueDate ? new Date(finalDueDate).toISOString() : null;
+      if (amount !== undefined) updateData.amount = parseFloat(amount);
+      if (currency !== undefined) updateData.currency = currency;
+      if (finalReceiverCompanyId !== undefined) updateData.receiver_company_id = finalReceiverCompanyId;
+      if (finalReceiverName !== undefined) updateData.receiver_name = finalReceiverName;
+      if (status !== undefined) updateData.status = status;
+
+      const { data: invoice, error } = await supabaseAdmin
+        .from('invoices')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(200).json({ invoice });
+    } catch (error) {
+      console.error('Update invoice error:', error);
+      return res.status(500).json({ error: 'Failed to update invoice' });
     }
-
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    await prisma.invoice.delete({
-      where: { id: params.id },
-    });
-
-    return NextResponse.json({ message: 'Invoice deleted' });
-  } catch (error) {
-    console.error('Delete invoice error:', error);
-    return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 });
   }
+
+  // DELETE /api/invoices/[id]
+  if (req.method === 'DELETE') {
+    try {
+      const { error } = await supabaseAdmin
+        .from('invoices')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return res.status(200).json({ message: 'Invoice deleted' });
+    } catch (error) {
+      console.error('Delete invoice error:', error);
+      return res.status(500).json({ error: 'Failed to delete invoice' });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

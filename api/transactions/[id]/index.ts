@@ -1,103 +1,90 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from '../../../lib/supabase';
+import { verifyToken, corsHeaders } from '../../../lib/auth';
 
-import prisma from '../../../lib/prisma';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  Object.entries(corsHeaders()).forEach(([key, value]) => res.setHeader(key, value));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-
-export const config = {
-  runtime: 'nodejs',
-};
-
-// GET /api/transactions/[id]
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    const transaction = await prisma.transaction.findUnique({
-      where: { id: params.id },
-      include: {
-        company: true,
-      },
-    });
-
-    if (!transaction) {
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ transaction });
-  } catch (error) {
-    console.error('Get transaction error:', error);
-    return NextResponse.json({ error: 'Failed to fetch transaction' }, { status: 500 });
+  const decoded = verifyToken(req);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
-}
 
-// PUT /api/transactions/[id]
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    const { type, amount, currency, category, description, date } = await req.json();
-
-    const transaction = await prisma.transaction.update({
-      where: { id: params.id },
-      data: {
-        type,
-        amount: parseFloat(amount),
-        currency,
-        category,
-        description,
-        date: new Date(date),
-      },
-    });
-
-    return NextResponse.json({ transaction });
-  } catch (error) {
-    console.error('Update transaction error:', error);
-    return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 });
+  const { id } = req.query;
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'Invalid transaction ID' });
   }
-}
 
-// DELETE /api/transactions/[id]
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // GET /api/transactions/[id]
+  if (req.method === 'GET') {
+    try {
+      const { data: transaction, error } = await supabaseAdmin
+        .from('transactions')
+        .select(`
+          *,
+          company:companies!transactions_company_id_fkey(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error || !transaction) {
+        return res.status(404).json({ error: 'Transaction not found' });
+      }
+
+      return res.status(200).json({ transaction });
+    } catch (error) {
+      console.error('Get transaction error:', error);
+      return res.status(500).json({ error: 'Failed to fetch transaction' });
     }
-
-    const token = authHeader.substring(7);
-    jwt.verify(token, JWT_SECRET);
-
-    await prisma.transaction.delete({
-      where: { id: params.id },
-    });
-
-    return NextResponse.json({ message: 'Transaction deleted' });
-  } catch (error) {
-    console.error('Delete transaction error:', error);
-    return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 });
   }
+
+  // PUT /api/transactions/[id]
+  if (req.method === 'PUT') {
+    try {
+      const { type, amount, currency, category, description, date } = req.body;
+
+      const updateData: Record<string, unknown> = {};
+      if (type !== undefined) updateData.type = type;
+      if (amount !== undefined) updateData.amount = parseFloat(amount);
+      if (currency !== undefined) updateData.currency = currency;
+      if (category !== undefined) updateData.category = category;
+      if (description !== undefined) updateData.description = description;
+      if (date !== undefined) updateData.date = new Date(date).toISOString();
+
+      const { data: transaction, error } = await supabaseAdmin
+        .from('transactions')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(200).json({ transaction });
+    } catch (error) {
+      console.error('Update transaction error:', error);
+      return res.status(500).json({ error: 'Failed to update transaction' });
+    }
+  }
+
+  // DELETE /api/transactions/[id]
+  if (req.method === 'DELETE') {
+    try {
+      const { error } = await supabaseAdmin
+        .from('transactions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      return res.status(200).json({ message: 'Transaction deleted' });
+    } catch (error) {
+      console.error('Delete transaction error:', error);
+      return res.status(500).json({ error: 'Failed to delete transaction' });
+    }
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }

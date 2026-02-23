@@ -1,65 +1,64 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import jwt from 'jsonwebtoken';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from '../../lib/supabase';
+import { verifyToken, corsHeaders } from '../../lib/auth';
 
-const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  Object.entries(corsHeaders()).forEach(([key, value]) => res.setHeader(key, value));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-export const config = {
-  runtime: 'nodejs',
-};
-
-// Middleware to verify JWT
-async function verifyToken(req: NextRequest) {
-  const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null;
+  const decoded = verifyToken(req);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const token = authHeader.substring(7);
-  try {
-    return jwt.verify(token, JWT_SECRET) as any;
-  } catch {
-    return null;
-  }
-}
+  // GET /api/companies
+  if (req.method === 'GET') {
+    try {
+      const { data: companies, error } = await supabaseAdmin
+        .from('companies')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-// GET /api/companies
-export async function GET(req: NextRequest) {
-  try {
-    const decoded = await verifyToken(req);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      if (error) throw error;
+
+      return res.status(200).json({ companies });
+    } catch (error) {
+      console.error('Get companies error:', error);
+      return res.status(500).json({ error: 'Failed to fetch companies' });
     }
-
-    const companies = await prisma.company.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json({ companies });
-  } catch (error) {
-    console.error('Get companies error:', error);
-    return NextResponse.json({ error: 'Failed to fetch companies' }, { status: 500 });
   }
-}
 
-// POST /api/companies
-export async function POST(req: NextRequest) {
-  try {
-    const decoded = await verifyToken(req);
-    if (!decoded) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // POST /api/companies
+  if (req.method === 'POST') {
+    try {
+      const { name, code, currency, country, type, initial_balance } = req.body;
+
+      if (!name || !code) {
+        return res.status(400).json({ error: 'Name and code are required' });
+      }
+
+      const { data: company, error } = await supabaseAdmin
+        .from('companies')
+        .insert({
+          name,
+          code,
+          currency: currency || 'EUR',
+          country,
+          type,
+          initial_balance: initial_balance || 0,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return res.status(201).json({ company });
+    } catch (error) {
+      console.error('Create company error:', error);
+      return res.status(500).json({ error: 'Failed to create company' });
     }
-
-    const { name, code, currency, country, type } = await req.json();
-
-    const company = await prisma.company.create({
-      data: { name, code, currency, country, type },
-    });
-
-    return NextResponse.json({ company }, { status: 201 });
-  } catch (error) {
-    console.error('Create company error:', error);
-    return NextResponse.json({ error: 'Failed to create company' }, { status: 500 });
   }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 }
