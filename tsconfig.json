@@ -11,8 +11,11 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
   },
-  "include": ["frontend/src", "lib", "api"],
-  "references": [{ "path": "./frontend/tsconfig.node.json" }]
+  "include": ["frontend/src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }
