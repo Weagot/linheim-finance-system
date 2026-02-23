@@ -2,6 +2,7 @@
   "name": "linheim-finance-system",
   "version": "2.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "npx vite --host",
     "build": "npx vite build",
