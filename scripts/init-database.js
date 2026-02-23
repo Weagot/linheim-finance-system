@@ -82,12 +82,10 @@ async function main() {
     }
   } else {
     console.log(`MISSING TABLES: ${missingTables.join(', ')}`);
-    console.log('');
-    console.log('Please run the following SQL in your Supabase SQL Editor:');
-    console.log('(Dashboard -> SQL Editor -> New Query -> Paste and Run)');
-    console.log('');
-    console.log('The SQL is located at: docs/supabase-init.sql');
+    console.log('Tables need to be created. Will attempt to create them now...');
   }
+
+  return { allExist, missingTables };
 }
 
 main().catch(console.error);
