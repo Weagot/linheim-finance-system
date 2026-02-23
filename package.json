@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx vite --host",
-    "build": "npx vite build",
-    "vercel-build": "npx vite build"
+    "dev": "cd frontend && npx vite --host",
+    "build": "cd frontend && npx vite build",
+    "vercel-build": "cd frontend && npm install && npx vite build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
