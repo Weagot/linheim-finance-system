@@ -3,10 +3,10 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "build": "cd frontend && npm install && npm run build",
+    "build": "npx prisma generate && cd frontend && npm install && npm run build",
     "build:backend": "cd backend && npx prisma generate && npm install && npx tsc",
     "build:frontend": "cd frontend && npm install && npm run build",
-    "vercel-build": "npm install && npx prisma generate && cd frontend && npm install && npm run build"
+    "vercel-build": "npx prisma generate && cd frontend && npm install && npm run build"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
