@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Invoices from './pages/Invoices';
 import Companies from './pages/Companies';
+import ExchangeRates from './pages/ExchangeRates';
 import Reports from './pages/Reports';
 import Layout from './components/Layout';
 import { ToastProvider } from './contexts/ToastContext';
@@ -48,6 +49,7 @@ function AppRoutes() {
             <Route path="/transactions" element={<Transactions />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/companies" element={<Companies />} />
+            <Route path="/exchange-rates" element={<ExchangeRates />} />
             <Route path="/reports" element={<Reports />} />
           </Routes>
         </Layout>

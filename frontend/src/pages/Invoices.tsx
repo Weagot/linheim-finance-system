@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Download, FileText, Edit2, Trash2, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { exportToExcel, formatDate } from '../lib/excel';
 
 interface Invoice {
   id: string;
@@ -210,33 +211,19 @@ export default function Invoices() {
 
   const handleExport = () => {
     const data = filteredInvoices.map((i) => ({
-      发票号: i.invoiceNumber,
-      开票日期: i.invoiceDate,
-      到期日: i.dueDate || '-',
-      金额: i.amount,
-      币种: i.currency,
-      状态: statusConfig[i.status].label,
-      开票公司: i.issuerCompanyName,
-      收票方: i.receiverCompanyName || '-',
-      描述: i.description || '-',
+      '发票号': i.invoiceNumber,
+      '开票日期': i.invoiceDate,
+      '到期日': i.dueDate || '-',
+      '金额': i.amount,
+      '币种': i.currency,
+      '状态': statusConfig[i.status].label,
+      '开票公司': i.issuerCompanyName,
+      '收票方': i.receiverCompanyName || '-',
+      '描述': i.description || '-',
     }));
 
-    const csv =
-      '发票号,开票日期,到期日,金额,币种,状态,开票公司,收票方,描述\n' +
-      data
-        .map(
-          (row) =>
-            `${row.发票号},${row.开票日期},${row.到期日},${row.金额},${row.币种},${row.状态},"${row.开票公司}","${row.收票方}","${row.描述}"`
-        )
-        .join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `发票列表_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-
-    toast.show('导出成功', 'success');
+    exportToExcel(data, `发票列表_${formatDate(new Date())}`, '发票');
+    toast.show('Excel 导出成功', 'success');
   };
 
   const totalAmount = filteredInvoices.reduce((sum, i) => sum + i.amount, 0);

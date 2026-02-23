@@ -149,17 +149,17 @@ function CompanyCard({
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-      <div className="flex-1">
-        <p className="font-medium text-gray-900">{name}</p>
-        <div className="flex gap-6 mt-2 text-sm">
-          <span className="text-gray-600">收入: {income}</span>
-          <span className="text-gray-600">支出: {expense}</span>
-          <span className="font-medium text-green-600">利润: {profit}</span>
+    <div className="p-4 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <p className="font-medium text-gray-900 text-sm md:text-base">{name}</p>
+        <div className={`px-3 py-1 rounded-full text-xs md:text-sm font-medium ${colorMap[color as keyof typeof colorMap]}`}>
+          正常
         </div>
       </div>
-      <div className={`px-3 py-1 rounded-full text-sm font-medium ${colorMap[color as keyof typeof colorMap]}`}>
-        正常
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs md:text-sm">
+        <span className="text-gray-600">收入: <span className="font-medium">{income}</span></span>
+        <span className="text-gray-600">支出: <span className="font-medium">{expense}</span></span>
+        <span className="text-green-600 font-medium">利润: {profit}</span>
       </div>
     </div>
   );
@@ -187,17 +187,29 @@ function TransactionRow({
   const typeInfo = typeMap[type];
 
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-      <div className="flex items-center gap-3">
-        <div className={`px-2 py-1 rounded text-xs font-medium ${typeInfo.bg} ${typeInfo.text}`}>
-          {typeInfo.label}
+    <div className="p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+          <div className={`px-2 py-1 rounded text-xs font-medium ${typeInfo.bg} ${typeInfo.text} flex-shrink-0`}>
+            {typeInfo.label}
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900 text-sm md:text-base truncate">{description}</p>
+            <p className="text-xs md:text-sm text-gray-500 truncate">{company}</p>
+          </div>
         </div>
-        <div>
-          <p className="font-medium text-gray-900">{description}</p>
-          <p className="text-sm text-gray-500">{company}</p>
+        <div className="text-right flex-shrink-0">
+          <p className={`font-semibold text-sm md:text-base ${
+            type === 'income' ? 'text-green-600' : type === 'expense' ? 'text-red-600' : 'text-blue-600'
+          }`}>
+            {amount}
+          </p>
+          <p className="text-xs text-gray-500">{date}</p>
         </div>
       </div>
-      <div className="text-right">
+    </div>
+  );
+}
         <p className={`font-semibold ${type === 'income' ? 'text-green-600' : type === 'expense' ? 'text-red-600' : 'text-gray-900'}`}>
           {type === 'expense' ? '-' : ''}{amount}
         </p>

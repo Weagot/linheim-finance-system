@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Plus, Search, Download, Filter, ArrowUpDown, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Search, Download, Filter, ArrowUpDown, Trash2, Edit2, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { exportToExcel, formatDate } from '../lib/excel';
 
 interface Transaction {
   id: string;
@@ -243,31 +244,18 @@ export default function Transactions() {
 
   const handleExport = () => {
     const data = filteredTransactions.map((t) => ({
-      日期: t.date,
-      类型: t.type === 'income' ? '收入' : t.type === 'expense' ? '支出' : '转账',
-      公司: t.companyName,
-      描述: t.description,
-      金额: t.amount,
-      币种: t.currency,
-      分类: t.category,
+      '日期': t.date,
+      '类型': t.type === 'income' ? '收入' : t.type === 'expense' ? '支出' : '转账',
+      '公司': t.companyName,
+      '描述': t.description,
+      '金额': t.amount,
+      '币种': t.currency,
+      '分类': t.category,
+      '关联公司': t.relatedCompany || '-',
     }));
 
-    const csv =
-      '日期,类型,公司,描述,金额,币种,分类\n' +
-      data
-        .map(
-          (row) =>
-            `${row.日期},${row.类型},${row.公司},"${row.描述}",${row.金额},${row.币种},${row.分类}`
-        )
-        .join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `财务流水_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-
-    toast.show('导出成功', 'success');
+    exportToExcel(data, `财务流水_${formatDate(new Date())}`, '财务流水');
+    toast.show('Excel 导出成功', 'success');
   };
 
   const typeColors = {

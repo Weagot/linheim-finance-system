@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Download, BarChart3, TrendingUp, TrendingDown, DollarSign, Building2 } from 'lucide-react';
+import { Download, BarChart3, TrendingUp, TrendingDown, DollarSign, Building2, FileSpreadsheet, FileText, Receipt } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { exportToExcel, exportFullReport, formatCurrency, formatDate } from '../lib/excel';
 
 // Mock data for reports
 const profitLossData = {
@@ -69,24 +70,73 @@ const companyData = [
 
 export default function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const toast = useToast();
 
-  const handleExport = () => {
-    const data = {
-      period: selectedPeriod,
-      profitLoss: profitLossData,
-      cashFlow: cashFlowData,
-      companies: companyData,
-    };
+  // Export functions
+  const handleExportFullReport = () => {
+    // Prepare data for full report
+    const transactions = [
+      { date: '2026-02-21', company: 'Deyou international GmbH', type: '收入', amount: 2500, currency: 'EUR', category: '仓储费', description: '客户A - 仓储费' },
+      { date: '2026-02-21', company: 'Deyou international GmbH', type: '支出', amount: 1850, currency: 'EUR', category: '运输费', description: '支付给供应商B' },
+      { date: '2026-02-20', company: 'Deyou international GmbH', type: '转账', amount: 3200, currency: 'EUR', category: '人力资源', description: '人力资源费结算' },
+    ];
+    
+    const invoices = [
+      { invoiceNumber: 'INV-2026-001', invoiceDate: '2026-02-20', amount: 5000, currency: 'EUR', issuerCompany: 'Deyou international GmbH', status: '已开票' },
+    ];
+    
+    const summary = companyData.map(c => ({
+      name: c.name,
+      income: c.income,
+      expenses: c.expenses,
+      profit: c.profit,
+    }));
+    
+    exportFullReport(transactions, invoices, summary);
+    toast.show('完整报表已导出', 'success');
+    setShowExportMenu(false);
+  };
 
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `财务报表_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
+  const handleExportProfitLoss = () => {
+    const data = [
+      { '类别': '总收入', '金额': profitLossData.income.total, '币种': 'EUR' },
+      ...profitLossData.income.breakdown.map(item => ({ '类别': `  ${item.category}`, '金额': item.amount, '币种': 'EUR' })),
+      { '类别': '总支出', '金额': -profitLossData.expenses.total, '币种': 'EUR' },
+      ...profitLossData.expenses.breakdown.map(item => ({ '类别': `  ${item.category}`, '金额': -item.amount, '币种': 'EUR' })),
+      { '类别': '净利润', '金额': profitLossData.profit, '币种': 'EUR' },
+    ];
+    exportToExcel(data, `利润表_${formatDate(new Date())}`, '利润表');
+    toast.show('利润表已导出', 'success');
+    setShowExportMenu(false);
+  };
 
-    toast.show('报表已导出', 'success');
+  const handleExportCashFlow = () => {
+    const data = [
+      { '项目': '期初现金', '金额': cashFlowData.opening, '币种': 'EUR' },
+      { '项目': '现金流入', '金额': cashFlowData.inflow, '币种': 'EUR' },
+      { '项目': '现金流出', '金额': -cashFlowData.outflow, '币种': 'EUR' },
+      { '项目': '净现金流', '金额': cashFlowData.inflow - cashFlowData.outflow, '币种': 'EUR' },
+      { '项目': '期末现金', '金额': cashFlowData.closing, '币种': 'EUR' },
+    ];
+    exportToExcel(data, `现金流表_${formatDate(new Date())}`, '现金流');
+    toast.show('现金流表已导出', 'success');
+    setShowExportMenu(false);
+  };
+
+  const handleExportCompanySummary = () => {
+    const data = companyData.map(c => ({
+      '公司名称': c.name,
+      '公司代码': c.code,
+      '币种': c.currency,
+      '收入': c.income,
+      '支出': c.expenses,
+      '利润': c.profit,
+      '占比': `${c.percentage}%`,
+    }));
+    exportToExcel(data, `公司财务汇总_${formatDate(new Date())}`, '公司汇总');
+    toast.show('公司汇总已导出', 'success');
+    setShowExportMenu(false);
   };
 
   const profitMargin = (profitLossData.profit / profitLossData.income.total * 100).toFixed(1);
@@ -110,13 +160,48 @@ export default function Reports() {
             <option value="year">本年</option>
             <option value="custom">自定义</option>
           </select>
-          <button
-            onClick={handleExport}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            导出报表
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              导出报表
+            </button>
+            
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                <button
+                  onClick={handleExportFullReport}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                  <span>完整报表</span>
+                </button>
+                <button
+                  onClick={handleExportProfitLoss}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                  <span>利润表</span>
+                </button>
+                <button
+                  onClick={handleExportCashFlow}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <DollarSign className="w-4 h-4 text-purple-600" />
+                  <span>现金流表</span>
+                </button>
+                <button
+                  onClick={handleExportCompanySummary}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Building2 className="w-4 h-4 text-orange-600" />
+                  <span>公司汇总</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
