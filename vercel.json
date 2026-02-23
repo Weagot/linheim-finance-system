@@ -1,18 +1,18 @@
 {
-  "buildCommand": "cd backend && npx prisma generate",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "framework": null,
   "functions": {
     "api/**/*.ts": {
       "runtime": "nodejs18.x",
-      "maxDuration": 10
+      "maxDuration": 30
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/api/:path*",
+      "destination": "/api/index"
     },
     {
       "source": "/(.*)",

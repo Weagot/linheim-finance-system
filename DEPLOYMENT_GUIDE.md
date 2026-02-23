@@ -3,149 +3,106 @@
 ## ✅ 准备工作清单
 
 - [x] 前端MVP已完成
-- [x] 后端API已完成
-- [x] Vercel Serverless Functions已创建
-- [ ] Supabase数据库创建
-- [ ] 配置环境变量
-- [ ] 部署到Vercel
+- [x] 后端API已完成（Vercel Serverless Functions）
+- [x] Supabase数据库已创建
+- [x] 环境变量已配置
+- [ ] 数据库迁移和初始化
 - [ ] 测试和验证
 
 ---
 
 ## 📋 详细部署步骤
 
-### 第1步：创建Supabase数据库
+### 第1步：数据库初始化
 
-1. **登录Supabase**
-   - 访问：https://supabase.com
-   - 使用你的付费账号登录
-
-2. **创建新项目**
-   - 点击 "New Project"
-   - 项目名称：`linheim-finance-system`
-   - 数据库密码：设置一个强密码（**记住这个密码！**）
-   - 区域：选择离你最近的（如：Northeast Asia (Tokyo)）
-   - 点击 "Create new project"
-   - 等待2-3分钟，数据库创建完成
-
-3. **获取数据库连接字符串**
-   - 进入项目 → Settings → Database
-   - 找到 "Connection string" 部分
-   - 选择 "URI" 标签
-   - 复制连接字符串，格式类似：
-     ```
-     postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-ID].supabase.co:5432/postgres
-     ```
-
-4. **创建数据库表（可选）**
-   - Vercel部署时会自动运行Prisma迁移
-   - 或者手动在Supabase的SQL Editor中运行迁移
-
----
-
-### 第2步：配置Vercel环境变量
-
-1. **连接GitHub到Vercel**
-   - 登录 Vercel：https://vercel.com
-   - 点击 "Add New" → "Project"
-   - 选择 "Import Git Repository"
-   - 授予Vercel访问GitHub权限
-   - 选择 `Weagot/linheim-finance-system` 仓库
-   - 点击 "Import"
-
-2. **配置项目设置**
-   - **Project Name**: `linheim-finance-system`
-   - **Framework Preset**: 选择 "Vite"
-   - **Root Directory**: 保持默认 `.`
-   - **Build and Output Settings**:
-     - Build Command: `npm run vercel-build`
-     - Output Directory: `frontend/dist`
-
-3. **添加环境变量（关键！）**
-   在 "Environment Variables" 部分添加以下变量：
-
-   | 名称 | 值 | 说明 |
-   |------|-----|------|
-   | `DATABASE_URL` | `[你的Supabase连接字符串]` | PostgreSQL数据库连接 |
-   | `JWT_SECRET` | `linheim-finance-2026-secret-very-long-random-string` | JWT密钥（生产环境改这个） |
-   | `NODE_ENV` | `production` | 生产环境 |
-
-4. **点击 "Deploy"**
-   - Vercel会开始构建和部署
-   - 等待3-5分钟完成
-
----
-
-### 第3步：更新前端API地址
-
-部署完成后，需要更新前端API地址：
-
-1. **在Vercel项目中**
-   - 进入 Settings → Environment Variables
-   - 添加新变量：
-     - 名称: `VITE_API_URL`
-     - 值: `https://linheim-finance-system.vercel.app/api`
-   - 触发重新部署
-
-2. **或者本地修改**
+1. **通过Vercel CLI推送数据库schema**
    ```bash
-   # 编辑 frontend/.env
-   VITE_API_URL=https://linheim-finance-system.vercel.app/api
+   # 确保已在项目根目录
+   cd /workspace/projects/workspace/finance-system
+
+   # 安装依赖
+   npm install
+
+   # 生成Prisma Client
+   npx prisma generate
+
+   # 推送schema到Supabase数据库
+   npx prisma db push
+   ```
+
+2. **或者通过Supabase SQL Editor**
+   - 进入Supabase项目 → SQL Editor
+   - 复制 `prisma/schema.prisma` 的内容
+   - 手动创建表（不推荐，容易出错）
+
+3. **创建初始数据**
+   ```bash
+   # 运行seed脚本
+   npx ts-node prisma/seed.ts
    ```
 
 ---
 
-### 第4步：初始化数据库
+### 第2步：本地测试
 
-Vercel部署完成后，需要运行数据库迁移：
+在推送到Vercel前，先本地测试：
 
-**选项A：通过Vercel CLI（推荐）**
 ```bash
-# 安装Vercel CLI
-npm i -g vercel
-
-# 登录
-vercel login
-
-# 连接到项目
-vercel link
+# 安装依赖
+npm install
 
 # 生成Prisma Client
-cd backend
 npx prisma generate
 
-# 推送schema到数据库
-npx prisma db push
+# 构建前端
+cd frontend && npm install && npm run build
+
+# 测试API（使用curl或Postman）
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@linheim.de","password":"admin123"}'
 ```
-
-**选项B：通过Supabase SQL Editor**
-1. 进入Supabase项目 → SQL Editor
-2. 复制 `backend/prisma/schema.prisma` 的内容
-3. 转换为SQL语句并执行
-4. 或者使用 Prisma生成的迁移文件
-
-**选项C：通过部署后访问**
-- 部署后直接访问系统
-- 首次使用时会自动创建表
 
 ---
 
-### 第5步：测试验证
+### 第3步：推送到GitHub并触发部署
+
+```bash
+# 添加所有更改
+git add .
+
+# 提交
+git commit -m "feat: add Vercel Serverless Functions API"
+
+# 推送
+git push origin main
+```
+
+Vercel会自动检测到更改并开始部署。
+
+---
+
+### 第4步：验证部署
 
 1. **访问部署后的系统**
    - 打开：https://linheim-finance-system.vercel.app
    - 应该看到登录页面
 
 2. **测试登录**
-   - 使用测试账号：
-     - 邮箱：`admin@linheim.com`
+   - 使用初始账号：
+     - 邮箱：`admin@linheim.de`
      - 密码：`admin123`
    - 登录成功后进入仪表盘
 
-3. **测试各个功能**
+3. **测试API**
+   - 打开浏览器开发者工具（F12）
+   - 检查Network标签，查看API请求
+   - 确保所有请求都返回200状态码
+
+4. **测试各个功能**
    - [ ] 公司管理（新增、编辑、删除）
-   - [ ] 财务流水（新增、编辑、删除、导出）
-   - [ ] 发票管理（新增、编辑、删除、状态切换）
+   - [ ] 财务流水（新增、编辑、删除）
+   - [ ] 发票管理（新增、编辑、删除）
    - [ ] 报表中心（查看报表）
 
 ---
